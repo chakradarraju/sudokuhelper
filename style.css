@@ -1,0 +1,59 @@
+#page {
+  display: table;
+  margin: auto;
+  font-family: sans-serif;
+  text-align: center;
+}
+
+#container {
+  border: black 2px solid;
+}
+
+.cell {
+  display: table-cell;
+  width: 54px;
+  height: 54px;
+  border: solid black 1px;
+  vertical-align: top;
+}
+
+.cell.leftstrong {
+  border-left: solid black 2px;
+}
+
+.cell.topstrong {
+  border-top: solid black 2px;
+}
+
+.cell.selected {
+  background: skyblue;
+}
+
+.cell.invalid {
+  background: lightpink;
+}
+
+.cell.withvalue .microcell {
+  display: none;
+}
+
+.cell .value {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  font-size: 48px;
+  display: none;
+}
+
+.cell.withvalue .value {
+  display: block;
+}
+
+.microcell {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  display: table-cell;
+  width: 18px;
+  height: 18px;
+}
