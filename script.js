@@ -6,20 +6,31 @@ var matrix = [];
 var cells = [];
 var mcells = [];
 var valueEls = [];
+var KEY_LEFT = 37;
+var KEY_UP = 38;
+var KEY_RIGHT = 39;
+var KEY_DOWN = 40;
+var KEY_ENTER = 13;
+var KEY_TAB = 9;
 
 function rand(n) {
   return Math.floor(Math.random() * n);
 }
 
-function selectCell() {
-  selectedCell = this;
+function cellOnClick() {
+  if (!this.classList.contains('cell')) return;
+  selectCell(this.getAttribute('data-row'), this.getAttribute('data-col'));
+}
+
+function selectCell(x, y) {
+  selectedCell = cells[x][y];
   var selected = document.getElementsByClassName('selected');
   if (selected.length > 0) selected[0].classList.remove('selected');
   selectedCell.classList.add('selected');
 }
 
 function initCell(cell, x, y) {
-  cell.onclick = selectCell;
+  cell.onclick = cellOnClick;
   for (var i = 0; i < 3; i++) {
     var row = document.createElement('div');
     row.classList.add('microrow');
@@ -180,12 +191,38 @@ function setValue(cell, value, label) {
 }
 
 function listener(e) {
+  if (e.keyCode === KEY_LEFT || (e.keyCode === KEY_TAB && e.shiftKey)) {
+    var x = parseInt(selectedCell.getAttribute('data-row')),
+        y = parseInt(selectedCell.getAttribute('data-col'));
+    if (y > 0) selectCell(x, y - 1);
+    e.preventDefault();
+  }
+  if (e.keyCode === KEY_RIGHT || (e.keyCode === KEY_TAB && !e.shiftKey)) {
+    var x = parseInt(selectedCell.getAttribute('data-row')),
+        y = parseInt(selectedCell.getAttribute('data-col'));
+    if (y < 8) selectCell(x, y + 1);
+    e.preventDefault();
+  }
+  if (e.keyCode === KEY_UP || (e.keyCode === KEY_ENTER && e.shiftKey)) {
+    var x = parseInt(selectedCell.getAttribute('data-row')),
+        y = parseInt(selectedCell.getAttribute('data-col'));
+    if (x > 0) selectCell(x - 1, y);
+    e.preventDefault();
+  }
+  if (e.keyCode === KEY_DOWN || (e.keyCode === KEY_ENTER && !e.shiftKey)) {
+    var x = parseInt(selectedCell.getAttribute('data-row')),
+        y = parseInt(selectedCell.getAttribute('data-col'));
+    if (x < 8) selectCell(x + 1, y);
+    e.preventDefault();
+  }
   if (e.keyCode === 8 || e.keyCode === 46) {
     clearSelectedCell();
-    return;
+    e.preventDefault();
   }
-  if (e.keyCode < 48 || e.keyCode > 57 || !selectedCell) return;
-  fillSelectedCell(e.keyCode - 48);
+  if (e.keyCode >= 48 && e.keyCode <= 57) {
+    fillSelectedCell(e.keyCode - 48);
+    e.preventDefault();
+  }
 }
 
 function getFillSelectedCell(i) {
@@ -195,11 +232,13 @@ function getFillSelectedCell(i) {
 }
 
 function fillSelectedCell(i) {
+  if (!selectedCell) return;
   selectedCell.classList.add('withvalue');
   setValue(selectedCell, i, i + '');
 }
 
 function clearSelectedCell() {
+  if (!selectedCell) return;
   selectedCell.classList.remove('withvalue');
   setValue(selectedCell, 0, '');
 }
