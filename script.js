@@ -30,8 +30,9 @@ function selectCell(x, y) {
   var highlighted = document.getElementsByClassName('highlight');
   Array.from(highlighted).forEach(h => h.classList.remove('highlight'));
   const v = matrix[x][y];
-  for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) if (matrix[i][j] === v) cells[i][j].classList.add('highlight');
+  if (v > 0) for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) if (matrix[i][j] === v) cells[i][j].classList.add('highlight');
   selectedCell.classList.add('selected');
+  selectedCell.classList.add('highlight');
 }
 
 function initCell(cell, x, y) {
