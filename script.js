@@ -27,6 +27,10 @@ function selectCell(x, y) {
   selectedCell = cells[x][y];
   var selected = document.getElementsByClassName('selected');
   if (selected.length > 0) selected[0].classList.remove('selected');
+  var highlighted = document.getElementsByClassName('highlight');
+  Array.from(highlighted).forEach(h => h.classList.remove('highlight'));
+  const v = matrix[x][y];
+  for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) if (matrix[i][j] === v) cells[i][j].classList.add('highlight');
   selectedCell.classList.add('selected');
 }
 

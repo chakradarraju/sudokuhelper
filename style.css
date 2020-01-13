@@ -31,8 +31,12 @@
   border-top: solid black 2px;
 }
 
-.cell.selected {
+.cell.selected.highlight {
   background: skyblue;
+}
+
+.cell.highlight {
+  background: lightgreen;
 }
 
 .cell.invalid {
