@@ -12,6 +12,7 @@ var KEY_RIGHT = 39;
 var KEY_DOWN = 40;
 var KEY_ENTER = 13;
 var KEY_TAB = 9;
+var refreshDisabled = false;
 
 function rand(n) {
   return Math.floor(Math.random() * n);
@@ -93,16 +94,21 @@ function initControls() {
     cell.appendChild(value);
     cell.onclick = getFillSelectedCell(i + 1);
   }
+  row.appendChild(createButton('X', clearSelectedCell));
+  document.getElementById('reset').appendChild(createButton("\u{21bb}", resetSudoku));
+}
+
+function createButton(text, action) {
   var cell = document.createElement('div');
   cell.classList.add('cell');
   cell.classList.add('control');
-  row.appendChild(cell);
   cell.classList.add('withvalue');
   var value = document.createElement('div');
   value.classList.add('value');
-  value.innerHTML = 'X';
+  value.innerHTML = text;
   cell.appendChild(value);
-  cell.onclick = clearSelectedCell;
+  cell.onclick = action;
+  return cell;
 }
 
 function highlightInvalid() {
@@ -117,65 +123,172 @@ function highlightInvalid() {
   }
 }
 
-function updatePossibilities() {
+function resetPossibilities() {
   for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) for (var k = 0; k < 9; k++) mcells[i][j][k].style.opacity = 1;
-  for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) if (matrix[i][j] !== 0) {
-    var value = matrix[i][j] - 1;
-    for (var k = 0; k < 9; k++) mcells[i][k][value].style.opacity = 0;
-    for (var k = 0; k < 9; k++) mcells[k][j][value].style.opacity = 0;
-    var x = Math.floor(i / 3), y = Math.floor(j / 3);
-    for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++) mcells[x * 3 + a][y * 3 + b][value].style.opacity = 0;
+}
+
+function removePossibility(i, j, k) {
+  mcells[i][j][k - 1].style.opacity = 0;
+}
+
+function removePossibilityInRow(i, rj, v) {
+  for (var j = 0; j < 9; j++) if (j !== rj) removePossibility(i, j, v);
+}
+
+function removePossibilityInColumn(ri, j, v) {
+  for (var i = 0; i < 9; i++) if (i !== ri) removePossibility(i, j, v);
+}
+
+function removePossibilityInBlock(i, j, v) {
+  const x = Math.floor(i / 3), y = Math.floor(j / 3);
+  for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++) if (x * 3 + a !== i || y * 3 + b !== j)
+    removePossibility(x * 3 + a, y * 3 + b, v);
+}
+
+function recomputePossibilities() {
+  resetPossibilities();
+  updateByExploredSolution();
+  updateByHiddenSingle();
+  updateByNakedSingle();
+}
+
+function updateByExploredSolution() {
+  for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) if (matrix[i][j] !== 0)
+    removePossibilityForConfirmedSuggestion(i, j, matrix[i][j]);
+}
+
+function removePossibilityForConfirmedSuggestion(i, j, v) {
+  removePossibilityInRow(i, j, v);
+  removePossibilityInColumn(i, j, v);
+  removePossibilityInBlock(i, j, v);
+}
+
+function updateByNakedSingle() {
+  for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) {
+    const ns = getNakedSingle(i, j);
+    if (ns !== 0) removePossibilityForConfirmedSuggestion(i, j, ns);
   }
 }
 
-function updateSuggestions() {
-  var counter = [];
-  for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) for (var k = 0; k < 9; k++) mcells[i][j][k].style.color = 'black';
-  for (var i = 0; i < 9; i++) {
-    for (var j = 0; j < 9; j++) counter[j] = 0;
-    for (var j = 0; j < 9; j++) if (matrix[i][j] === 0) {
-      for (var k = 0; k < 9; k++) counter[k] += parseInt(mcells[i][j][k].style.opacity);
-    }
-    for (var j = 0; j < 9; j++) if (matrix[i][j] === 0)
-      for (var k = 0; k < 9; k++) if (counter[k] === 1)
-        mcells[i][j][k].style.color = 'lightgreen';
+function getNakedSingle(i, j) {
+  if (matrix[i][j] !== 0) return 0;
+  var foundNS = 0;
+  for (var k = 0; k < 9; k++) {
+    const visible = parseInt(mcells[i][j][k].style.opacity);
+    if (foundNS > 0 && visible) return 0;
+    if (visible) foundNS = k + 1;
   }
-  for (var j = 0; j < 9; j++) {
-    for (var i = 0; i < 9; i++) counter[i] = 0;
-    for (var i = 0; i < 9; i++) if (matrix[i][j] === 0) {
-      for (var k = 0; k < 9; k++) counter[k] += parseInt(mcells[i][j][k].style.opacity);
-    }
-    for (var i = 0; i < 9; i++) if (matrix[i][j] === 0)
-      for (var k = 0; k < 9; k++) if (counter[k] === 1)
-        mcells[i][j][k].style.color = 'lightgreen';
-  }
-  for (var x = 0; x < 3; x++) for (var y = 0; y < 3; y++) {
-    for (var i = 0; i < 9; i++) counter[i] = 0;
-    for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++) {
-      var i = x * 3 + a, j = y * 3 + b;
-      if (matrix[i][j] === 0) {
-        for (var k = 0; k < 9; k++) counter[k] += parseInt(mcells[i][j][k].style.opacity);
-      }
-    }
-    for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++) {
-      var i = x * 3 + a, j = y * 3 + b;
-      if (matrix[i][j] === 0) {
-        for (var k = 0; k < 9; k++) if (counter[k] === 1)
-          mcells[i][j][k].style.color = 'lightgreen';
-      }
+  return foundNS;
+}
+
+function updateByHiddenSingle() {
+  for (var i = 0; i < 9; i++) updateByHiddenSinglesInRow(i);
+  for (var j = 0; j < 9; j++) updateByHiddenSinglesInColumn(j);
+  for (var i = 0; i < 9; i += 3) for (var j = 0; j < 9; j += 3)
+    updateByHiddenSinglesInBlock(i, j);
+}
+
+function updateCounter(i, j, counter, posx, posy) {
+  if (matrix[i][j] !== 0) return;
+  for (var k = 0; k < 9; k++) {
+    if (parseInt(mcells[i][j][k].style.opacity)) {
+      counter[k]++;
+      posx[k] = i;
+      posy[k] = j;  
     }
   }
-  for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) if (matrix[i][j] === 0) {
-    var pos = [];
-    for (var k = 0; k < 9; k++) if (parseInt(mcells[i][j][k].style.opacity) === 1) pos.push(k);
-    if (pos.length === 1) mcells[i][j][pos[0]].style.color = 'lightgreen';
+}
+
+function getHiddenSingles(counter) {
+  return counter.map((e, i) => e === 1 ? i + 1 : 0).filter(i => i);
+}
+
+function removePossibilitiesForHiddenSingles(hs, posx, posy) {
+  hs.forEach(hsi => {
+    const x = posx[hsi - 1], y = posy[hsi - 1];
+    removePossibilityForConfirmedSuggestion(x, y, hsi);
+    for (var k = 0; k < 9; k++) if (k + 1 !== hsi) removePossibility(x, y, k + 1);
+  });
+  return hs.length > 0;
+}
+
+function updateByHiddenSinglesInRow(i) {
+  var counter = Array(9).fill(0);
+  var posx = Array(9).fill(-1);
+  var posy = Array(9).fill(-1);
+  for (var j = 0; j < 9; j++) updateCounter(i, j, counter, posx, posy);
+  return removePossibilitiesForHiddenSingles(getHiddenSingles(counter), posx, posy);
+}
+
+function updateByHiddenSinglesInColumn(j) {
+  var counter = Array(9).fill(0);
+  var posx = Array(9).fill(-1);
+  var posy = Array(9).fill(-1);
+  for (var i = 0; i < 9; i++) updateCounter(i, j, counter, posx, posy);
+  return removePossibilitiesForHiddenSingles(getHiddenSingles(counter), posx, posy);
+}
+
+function updateByHiddenSinglesInBlock(i, j) {
+  var counter = Array(9).fill(0);
+  var posx = Array(9).fill(-1);
+  var posy = Array(9).fill(-1);
+  for (var x = 0; x < 3; x++) for (var y = 0; y < 3; y++) updateCounter(i + x, j + y, counter, posx, posy);
+  return removePossibilitiesForHiddenSingles(getHiddenSingles(counter), posx, posy);
+}
+
+function getElement(x) {
+  const i = Math.floor(x / 9), j = x % 9;
+  return i === 9 ? 0 : matrix[i][j];
+}
+
+function setElement(x, v) {
+  const i = Math.floor(x / 9), j = x % 9;
+  if (v === 0 || i === 9) return;
+  fill(cells[i][j], v);
+}
+
+function encodeState() {
+  const size = Math.ceil(81 / 2);
+  const state = new Uint8Array(size);
+  for (var i = 0; i < size; i++) state[i] = getElement(i * 2) * 16 + getElement(i * 2 + 1);
+  return state;
+}
+
+function decodeState() {
+  var hash = window.location.hash;
+  if (!hash) return;
+  refreshDisabled = true;
+  console.log('Decoding', hash);
+  const state = fromString(atob(hash.substr(1)));
+  for (var i = 0; i < 81 / 2; i++) {
+    setElement(i * 2, Math.floor(state[i] / 16));
+    setElement(i * 2 + 1, state[i] % 16);
   }
+  refreshDisabled = false;
+  refreshBoard();
+}
+
+function mkString(arr) {
+  var str = '';
+  for (var i = 0; i < arr.length; i++) str += String.fromCharCode(arr[i]);
+  return str;
+}
+
+function fromString(str) {
+  const arr = new Uint8Array(str.length);
+  for (var i = 0; i < str.length; i++) arr[i] = str.charCodeAt(i);
+  return arr;
+}
+
+function updateHash() {
+  window.location.hash = btoa(mkString(encodeState()));
 }
 
 function refreshBoard() {
+  if (refreshDisabled) return;
+  updateHash();
   highlightInvalid();
-  updatePossibilities();
-  updateSuggestions();
+  recomputePossibilities();
 }
 
 function setValue(cell, value, label) {
@@ -231,18 +344,34 @@ function getFillSelectedCell(i) {
   }
 }
 
+function fill(cell, i) {
+  cell.classList.add('withvalue');
+  setValue(cell, i, i + '');
+}
+
 function fillSelectedCell(i) {
   if (!selectedCell) return;
-  selectedCell.classList.add('withvalue');
-  setValue(selectedCell, i, i + '');
+  fill(selectedCell, i);
+}
+
+function clear(cell) {
+  cell.classList.remove('withvalue');
+  setValue(cell, 0, '');
 }
 
 function clearSelectedCell() {
   if (!selectedCell) return;
-  selectedCell.classList.remove('withvalue');
-  setValue(selectedCell, 0, '');
+  clear(selectedCell);
+}
+
+function resetSudoku() {
+  refreshDisabled = true;
+  for (var i = 0; i < 9; i++) for (var j = 0; j < 9; j++) clear(cells[i][j]);
+  refreshDisabled = false;
+  refreshBoard();
 }
 
 initGrid();
 initControls();
 document.onkeydown = listener;
+document.addEventListener('DOMContentLoaded', decodeState);
